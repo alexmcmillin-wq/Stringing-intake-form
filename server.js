@@ -6,12 +6,40 @@ const crypto = require("crypto");
 const express = require("express");
 const { Pool } = require("pg");
 
-const { DATABASE_URL, STAFF_PIN, OWNER_PIN, SESSION_SECRET } = process.env;
-const PORT = process.env.PORT || 3000;
-for (const [k, v] of Object.entries({ DATABASE_URL, STAFF_PIN, OWNER_PIN, SESSION_SECRET })) {
-  if (!v) { console.error(`Missing environment variable ${k}`); process.exit(1); }
+const env = process.env;
+const trim = (v) => (typeof v === "string" ? v.trim() : v);
+// Accept the usual Railway / Postgres variable names, or build the URL from PG* parts.
+function findDatabaseUrl() {
+  for (const k of ["DATABASE_URL", "DATABASE_PRIVATE_URL", "DATABASE_PUBLIC_URL", "POSTGRES_URL", "PGURL"]) {
+    const v = trim(env[k]);
+    if (v && /^postgres(ql)?:\/\//.test(v)) return { url: v, from: k };
+  }
+  const { PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE } = env;
+  if (PGHOST && PGUSER && PGDATABASE) {
+    const auth = encodeURIComponent(PGUSER) + (PGPASSWORD ? ":" + encodeURIComponent(PGPASSWORD) : "");
+    return { url: `postgresql://${auth}@${PGHOST}:${PGPORT || 5432}/${PGDATABASE}`, from: "PGHOST/PGUSER/PGDATABASE" };
+  }
+  return null;
+}
+const db = findDatabaseUrl();
+const DATABASE_URL = db && db.url;
+const STAFF_PIN = trim(env.STAFF_PIN), OWNER_PIN = trim(env.OWNER_PIN), SESSION_SECRET = trim(env.SESSION_SECRET);
+const PORT = env.PORT || 3000;
+
+const missing = [];
+if (!DATABASE_URL) missing.push("DATABASE_URL");
+if (!STAFF_PIN) missing.push("STAFF_PIN");
+if (!OWNER_PIN) missing.push("OWNER_PIN");
+if (!SESSION_SECRET) missing.push("SESSION_SECRET");
+if (missing.length) {
+  console.error(`Missing environment variable(s): ${missing.join(", ")}`);
+  const seen = Object.keys(env).filter((k) => /DATABASE|POSTGRES|^PG|PIN|SECRET|RAILWAY_SERVICE_NAME/.test(k)).sort();
+  console.error(`Related variables this service can see (names only): ${seen.join(", ") || "none"}`);
+  if (env.DATABASE_URL !== undefined && !DATABASE_URL) console.error("DATABASE_URL is set but empty or not a postgres:// address. If it uses ${{...}}, the service name inside the braces must match your Postgres service exactly.");
+  process.exit(1);
 }
 if (STAFF_PIN === OWNER_PIN) { console.error("STAFF_PIN and OWNER_PIN must be different"); process.exit(1); }
+console.log(`Using database from ${db.from}`);
 
 const pool = new Pool({
   connectionString: DATABASE_URL,
