@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stringing Intake</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* Layout: a workbench tool. Top bar with three views; intake is a two-column form (job left, client history right). */
+:root {
+  --bg: #f3f5f7;
+  --surface: #ffffff;
+  --ink: #142033;
+  --muted: #5b6878;
+  --line: #d9dfe6;
+  --accent: #1d4f8c;
+  --accent-ink: #ffffff;
+  --ball: #d7ec3a;
+  --ok: #1f7a4a;
+  --warn: #a35d00;
+  --bad: #b3261e;
+  --field: #f8fafc;
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e141c; --surface: #16202b; --ink: #e6edf5; --muted: #93a2b3; --line: #2a3746;
+    --accent: #7fb0ec; --accent-ink: #0e141c; --ball: #d7ec3a; --ok: #5fcf8f; --warn: #f0a742; --bad: #ff8a80; --field: #111a24;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e141c; --surface: #16202b; --ink: #e6edf5; --muted: #93a2b3; --line: #2a3746;
+  --accent: #7fb0ec; --accent-ink: #0e141c; --ball: #d7ec3a; --ok: #5fcf8f; --warn: #f0a742; --bad: #ff8a80; --field: #111a24;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--font-body); }
+h1, h2, h3 { font-family: var(--font-display); letter-spacing: .02em; margin: 0; text-wrap: balance; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+header { background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+.bar { max-width: 1180px; margin: 0 auto; padding: 10px 16px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; margin-right: auto; }
+.brand h1 { font-size: 24px; text-transform: uppercase; }
+.dot { width: 18px; height: 18px; border-radius: 50%; background: var(--ball); box-shadow: inset 0 0 0 2px rgba(0,0,0,.15); }
+nav { display: flex; gap: 4px; }
+nav a { text-decoration: none; padding: 7px 14px; border-radius: 6px; color: var(--muted); font-weight: 600; }
+nav a[aria-current="page"] { background: var(--accent); color: var(--accent-ink); }
+nav a .count { font-family: var(--font-mono); font-size: 12px; margin-left: 6px; opacity: .8; }
+
+main { max-width: 1180px; margin: 0 auto; padding: 18px 16px 60px; }
+.notice { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--warn); color: var(--warn); margin-bottom: 14px; display: none; }
+.notice.show { display: block; }
+.view { display: none; }
+.view.active { display: block; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+@media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+
+fieldset { border: 0; padding: 0; margin: 0 0 22px; }
+legend { font-family: var(--font-display); font-size: 19px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 10px; padding: 0; display: flex; gap: 10px; align-items: center; }
+legend .step { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.row { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 12px; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); font-weight: 500; }
+input, select, textarea { background: var(--field); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; color: var(--ink); min-width: 0; }
+textarea { min-height: 64px; resize: vertical; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.req::after { content: " *"; color: var(--bad); }
+
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; background: var(--field); padding: 7px 14px; cursor: pointer; font-weight: 600; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+
+.strings { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 620px) { .strings { grid-template-columns: 1fr; } }
+.strings .side { border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: var(--field); }
+.strings .side h3 { font-size: 16px; text-transform: uppercase; margin-bottom: 8px; color: var(--muted); }
+.strings .side input, .strings .side select { background: var(--surface); }
+.strings.full .crosses { opacity: .55; }
+.tension-wrap { display: flex; gap: 6px; align-items: center; }
+.tension-wrap input { width: 90px; font-family: var(--font-mono); font-size: 18px; }
+.conv { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+
+.btns { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.btn { border: 1px solid var(--line); background: var(--surface); padding: 9px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.danger { color: var(--bad); border-color: var(--bad); }
+.btn.small { padding: 5px 10px; font-size: 13px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.status-msg { font-size: 13px; color: var(--ok); }
+.status-msg.err { color: var(--bad); }
+
+.suggest { position: relative; }
+.suggest ul { position: absolute; top: 100%; left: 0; right: 0; z-index: 4; list-style: none; margin: 4px 0 0; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.12); max-height: 240px; overflow: auto; }
+.suggest li button { width: 100%; text-align: left; border: 0; background: none; padding: 7px 8px; border-radius: 4px; cursor: pointer; }
+.suggest li button:hover, .suggest li button:focus-visible { background: var(--field); }
+.suggest li small { color: var(--muted); margin-left: 6px; }
+
+aside h2 { font-size: 20px; text-transform: uppercase; margin-bottom: 4px; }
+aside .sub { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+.hist { display: flex; flex-direction: column; gap: 10px; }
+.hist .item { border: 1px solid var(--line); border-left: 4px solid var(--ball); border-radius: 6px; padding: 10px 12px; background: var(--field); }
+.hist .item .top { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); }
+.hist .item .rq { font-weight: 600; margin: 2px 0; }
+.hist .item .st { font-size: 13px; }
+.hist .item .ten { font-family: var(--font-mono); font-size: 16px; }
+.empty { color: var(--muted); font-size: 14px; padding: 14px; border: 1px dashed var(--line); border-radius: 8px; text-align: center; }
+
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+.toolbar input[type="search"] { flex: 1 1 240px; }
+.cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+.col h2 { font-size: 18px; text-transform: uppercase; margin-bottom: 8px; display: flex; justify-content: space-between; }
+.col h2 .mono { font-size: 14px; color: var(--muted); }
+.job { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 4px; }
+.job.overdue { border-left: 4px solid var(--bad); }
+.job .who { font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+.job .meta { font-size: 13px; color: var(--muted); }
+.job .ten { font-family: var(--font-mono); }
+.chip { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.chip.ok { color: var(--ok); }
+.chip.warn { color: var(--warn); }
+.chip.bad { color: var(--bad); }
+.job .btns { margin-top: 6px; }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.click { cursor: pointer; }
+tr.click:hover td { background: var(--field); }
+.client-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: start; margin-bottom: 12px; }
+.client-head h2 { font-size: 26px; }
+.contact { color: var(--muted); font-size: 14px; }
+.confirm { display: none; gap: 8px; align-items: center; font-size: 13px; color: var(--bad); }
+.confirm.show { display: inline-flex; }
+.overlay { position: fixed; inset: 0; background: rgba(10,16,24,.55); display: none; align-items: flex-start; justify-content: center; padding: 24px 16px; z-index: 20; overflow: auto; }
+.overlay.show { display: flex; }
+.modal { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; width: min(460px, 100%); display: flex; flex-direction: column; gap: 12px; }
+.modal h2 { font-size: 22px; text-transform: uppercase; }
+.modal iframe { width: 100%; height: 470px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.modal .hint { font-size: 13px; color: var(--muted); }
+.overlay.login { background: var(--bg); align-items: center; }
+.overlay.login .modal { width: min(360px, 100%); }
+.overlay.login input { font-size: 22px; letter-spacing: .2em; font-family: var(--font-mono); }
+.modal .hint { font-size: 13px; color: var(--muted); }
+.notice.info { border-color: var(--accent); color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) { .btn, nav a { transition: background .15s, color .15s; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="brand"><span class="dot" aria-hidden="true"></span><h1>Stringing Intake</h1></div>
+    <nav aria-label="Views">
+      <a href="#intake" data-view="intake">New job</a>
+      <a href="#queue" data-view="queue">Queue<span class="count" id="queueCount"></span></a>
+      <a href="#clients" data-view="clients">Clients<span class="count" id="clientCount"></span></a>
+    </nav>
+    <button class="btn small" type="button" id="lockBtn" title="Sign out on this device"><span id="roleLbl">Staff</span> · Lock</button>
+  </div>
+</header>
+
+<main>
+  <div class="notice" id="notice"></div>
+
+  <!-- INTAKE -->
+  <section class="view" id="view-intake">
+    <div class="grid2">
+      <form class="card" id="jobForm" novalidate>
+        <fieldset>
+          <legend><span class="step">01</span>Client</legend>
+          <div class="row">
+            <label class="suggest"><span>Name<span class="req" aria-hidden="true"></span></span>
+              <input id="c_name" autocomplete="off" required placeholder="Start typing to find a client">
+              <ul id="nameSuggest" hidden></ul>
+            </label>
+            <label>Phone<input id="c_phone" type="tel" autocomplete="off"></label>
+            <label>Email<input id="c_email" type="email" autocomplete="off"></label>
+          </div>
+          <div class="conv" id="clientState">New client</div>
+        </fieldset>
+
+        <fieldset>
+          <legend><span class="step">02</span>Racquet</legend>
+          <div class="row">
+            <label>Brand<input id="r_brand" list="brandList" placeholder="Wilson"></label>
+            <label>Model<input id="r_model" placeholder="Pro Staff 97 v14"></label>
+            <label>Racquet tag<input id="r_tag" placeholder="e.g. #2 of 3, red tape"></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend><span class="step">03</span>String setup</legend>
+          <div class="btns" style="margin-bottom:12px">
+            <div class="seg" role="group" aria-label="Configuration">
+              <button type="button" data-config="Full bed" aria-pressed="true">Full bed</button>
+              <button type="button" data-config="Hybrid" aria-pressed="false">Hybrid</button>
+            </div>
+            <div class="seg" role="group" aria-label="Tension unit">
+              <button type="button" data-unit="lbs" aria-pressed="true">lbs</button>
+              <button type="button" data-unit="kg" aria-pressed="false">kg</button>
+            </div>
+          </div>
+          <div class="strings full" id="stringsBox">
+            <div class="side mains">
+              <h3 id="mainsTitle">Mains + crosses</h3>
+              <div class="row">
+                <label>String<input id="m_string" list="stringList" placeholder="Luxilon ALU Power"></label>
+              </div>
+              <div class="row">
+                <label>Gauge<select id="m_gauge" class="gauge"></select></label>
+                <label>Tension<span class="tension-wrap"><input id="m_tension" inputmode="decimal" placeholder="52"><span class="unitLbl">lbs</span></span><span class="conv" id="m_conv"></span></label>
+              </div>
+            </div>
+            <div class="side crosses">
+              <h3>Crosses</h3>
+              <div class="row">
+                <label>String<input id="x_string" list="stringList" placeholder="Same as mains"></label>
+              </div>
+              <div class="row">
+                <label>Gauge<select id="x_gauge" class="gauge"></select></label>
+                <label>Tension<span class="tension-wrap"><input id="x_tension" inputmode="decimal" placeholder="50"><span class="unitLbl">lbs</span></span><span class="conv" id="x_conv"></span></label>
+              </div>
+            </div>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <label>Stencil<input id="s_stencil" placeholder="None, or brand + color"></label>
+            <label>Extras<input id="s_extras" placeholder="Overgrip, dampener…"></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend><span class="step">04</span>Job</legend>
+          <div class="row">
+            <label>Dropped off<input id="j_in" type="date"></label>
+            <label>Due<input id="j_due" type="date"></label>
+            <label>Status<select id="j_status"><option>Received</option><option>Strung</option><option>Picked up</option></select></label>
+            <label>Price ($)<input id="j_price" inputmode="decimal" placeholder="35"></label>
+            <label>Paid<select id="j_paid"><option value="no">Not paid</option><option value="yes">Paid</option></select></label>
+          </div>
+          <label>Notes<textarea id="j_notes" placeholder="Broke at the top of the mains, prefers a crisp feel, etc."></textarea></label>
+        </fieldset>
+
+        <div class="btns">
+          <button class="btn primary" type="submit" id="saveBtn">Save job</button>
+          <button class="btn" type="button" id="clearBtn">Clear form</button>
+          <button class="btn" type="button" id="ticketBtn" hidden>Print tag</button>
+          <button class="btn danger" type="button" id="deleteJobBtn" hidden>Delete job</button>
+          <span class="confirm" id="confirmDelJob">Delete this job? <button class="btn small danger" type="button" id="yesDelJob">Delete</button><button class="btn small" type="button" id="noDelJob">Keep</button></span>
+          <span class="status-msg" id="saveMsg" role="status"></span>
+        </div>
+      </form>
+
+      <aside class="card" aria-labelledby="histTitle">
+        <h2 id="histTitle">Past setups</h2>
+        <div class="sub" id="histSub">Pick a client to see what they've had before.</div>
+        <div class="hist" id="hist"></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- QUEUE -->
+  <section class="view" id="view-queue">
+    <div class="toolbar">
+      <input type="search" id="queueSearch" placeholder="Filter by client, racquet or string" aria-label="Filter queue">
+      <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="showPicked"> Show picked-up jobs from the last 30 days</label>
+    </div>
+    <div class="cols" id="queueCols"></div>
+  </section>
+
+  <!-- CLIENTS -->
+  <section class="view" id="view-clients">
+    <div id="clientList">
+      <div class="toolbar">
+        <input type="search" id="clientSearch" placeholder="Search name, phone, email, racquet, string, notes…" aria-label="Search clients">
+        <span class="conv" id="clientMatch"></span>
+        <label class="btn small" id="importLbl" hidden>Import records<input type="file" id="importFile" accept=".json,application/json" hidden></label>
+        <span class="status-msg" id="csvMsg" role="status"></span>
+      </div>
+      <div class="card table-wrap">
+        <table>
+          <thead><tr><th>Client</th><th>Phone</th><th>Jobs</th><th>Last setup</th><th>Last in</th></tr></thead>
+          <tbody id="clientRows"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="clientDetail" hidden></div>
+  </section>
+</main>
+
+<div class="overlay login" id="loginOverlay" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+  <form class="modal" id="loginForm" novalidate>
+    <div class="brand"><span class="dot" aria-hidden="true"></span><h2 id="loginTitle">Stringing Intake</h2></div>
+    <label>Shop PIN<input id="pin" type="password" inputmode="numeric" autocomplete="current-password" required></label>
+    <div class="btns">
+      <button class="btn primary" type="submit" id="loginBtn">Unlock</button>
+      <span class="status-msg err" id="loginMsg" role="status"></span>
+    </div>
+    <div class="hint">This device stays unlocked for 30 days. Use Lock in the top bar to sign out.</div>
+  </form>
+</div>
+
+<div class="overlay" id="ticketOverlay" role="dialog" aria-modal="true" aria-labelledby="ticketTitle">
+  <div class="modal">
+    <h2 id="ticketTitle">Racquet tag</h2>
+    <iframe id="ticketFrame" title="Tag preview"></iframe>
+    <div class="hint" id="ticketHint"></div>
+    <div class="btns">
+      <button class="btn primary" type="button" id="ticketPrint">Print tag</button>
+      <button class="btn" type="button" id="ticketClose">Close</button>
+      <span class="status-msg" id="ticketMsg" role="status"></span>
+    </div>
+  </div>
+</div>
+
+<datalist id="brandList"><option>Babolat</option><option>Head</option><option>Wilson</option><option>Yonex</option><option>Prince</option><option>Tecnifibre</option><option>Dunlop</option><option>Volkl</option><option>Solinco</option></datalist>
+<datalist id="stringList"></datalist>
+
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const GAUGES = ["", "15L (1.35mm)", "16 (1.30mm)", "16L (1.28mm)", "17 (1.25mm)", "17L (1.20mm)", "18 (1.15mm)", "19 (1.10mm)"];
+  const COMMON_STRINGS = ["Luxilon ALU Power", "Luxilon 4G", "Babolat RPM Blast", "Babolat VS Touch (gut)", "Solinco Hyper-G", "Solinco Tour Bite", "Tecnifibre X-One Biphase", "Tecnifibre NRG2", "Wilson NXT", "Wilson Champions Choice", "Head Lynx Tour", "Head Hawk Touch", "Yonex Poly Tour Pro", "Prince Synthetic Gut Duraflex", "Kirschbaum Pro Line II"];
+
+  let db = null;
+  let clients = [];   // {id, ...data}
+  let jobs = [];      // {id, ...data}
+  let config = "Full bed";
+  let unit = "lbs";
+  let selectedClientId = null;
+  let editingJobId = null;
+  let openClientId = null;
+  let canWrite = true;
+  let isOwner = false;
+
+  // ---------- setup ----------
+  document.querySelectorAll(".gauge").forEach((sel) => { sel.innerHTML = GAUGES.map((g) => `<option value="${esc(g)}">${g ? esc(g) : "—"}</option>`).join(""); });
+  function today(offset) { const d = new Date(); d.setDate(d.getDate() + (offset || 0)); return d.toISOString().slice(0, 10); }
+  function fmtDate(s) { if (!s) return ""; const d = new Date(s + "T12:00:00"); return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: d.getFullYear() === new Date().getFullYear() ? undefined : "numeric" }); }
+  function notice(msg) { const n = $("notice"); n.textContent = msg || ""; n.classList.toggle("show", !!msg); }
+
+  // ---------- routing ----------
+  function route() {
+    const v = (location.hash || "#intake").slice(1);
+    const view = ["intake", "queue", "clients"].includes(v) ? v : "intake";
+    document.querySelectorAll(".view").forEach((el) => el.classList.toggle("active", el.id === "view-" + view));
+    document.querySelectorAll("nav a").forEach((a) => { if (a.dataset.view === view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+  }
+  window.addEventListener("hashchange", route);
+  route();
+
+  // ---------- config / unit toggles ----------
+  function setConfig(c) {
+    config = c;
+    document.querySelectorAll("[data-config]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.config === c)));
+    $("stringsBox").classList.toggle("full", c === "Full bed");
+    $("mainsTitle").textContent = c === "Full bed" ? "Mains + crosses" : "Mains";
+    document.querySelectorAll(".crosses input, .crosses select").forEach((el) => { el.disabled = c === "Full bed"; });
+    updateConv();
+  }
+  function setUnit(u) {
+    unit = u;
+    document.querySelectorAll("[data-unit]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.unit === u)));
+    document.querySelectorAll(".unitLbl").forEach((s) => (s.textContent = u));
+    updateConv();
+  }
+  document.querySelectorAll("[data-config]").forEach((b) => b.addEventListener("click", () => setConfig(b.dataset.config)));
+  document.querySelectorAll("[data-unit]").forEach((b) => b.addEventListener("click", () => setUnit(b.dataset.unit)));
+  function conv(v) {
+    const n = parseFloat(v); if (!isFinite(n)) return "";
+    return unit === "lbs" ? `≈ ${(n * 0.45359237).toFixed(1)} kg` : `≈ ${(n / 0.45359237).toFixed(1)} lbs`;
+  }
+  function updateConv() { $("m_conv").textContent = conv($("m_tension").value); $("x_conv").textContent = config === "Full bed" ? "" : conv($("x_tension").value); }
+  $("m_tension").addEventListener("input", updateConv);
+  $("x_tension").addEventListener("input", updateConv);
+  setConfig("Full bed");
+
+  // ---------- string suggestions ----------
+  function refreshStringList() {
+    const used = new Set(COMMON_STRINGS);
+    jobs.forEach((j) => { if (j.mainsString) used.add(j.mainsString); if (j.crossesString) used.add(j.crossesString); });
+    $("stringList").innerHTML = [...used].sort().map((s) => `<option value="${esc(s)}"></option>`).join("");
+  }
+
+  // ---------- helpers on data ----------
+  function jobsFor(clientId) { return jobs.filter((j) => j.clientId === clientId).sort((a, b) => (b.dateIn || "").localeCompare(a.dateIn || "") || (b.createdAt || 0) - (a.createdAt || 0)); }
+  function tensionText(j) {
+    const u = j.unit || "lbs";
+    if (j.config === "Hybrid") return `${j.mainsTension || "?"}/${j.crossesTension || "?"} ${u}`;
+    return `${j.mainsTension || "?"} ${u}`;
+  }
+  function stringText(j) {
+    const g = (x) => (x ? " " + x.split(" ")[0] : "");
+    if (j.config === "Hybrid") return `${j.mainsString || "?"}${g(j.mainsGauge)} / ${j.crossesString || "?"}${g(j.crossesGauge)}`;
+    return `${j.mainsString || "?"}${g(j.mainsGauge)}`;
+  }
+  function racquetText(j) { return [j.racquetBrand, j.racquetModel].filter(Boolean).join(" ") || "Racquet not noted"; }
+
+  // ---------- client autocomplete ----------
+  const nameInput = $("c_name"), sugg = $("nameSuggest");
+  nameInput.addEventListener("input", () => {
+    const q = nameInput.value.trim().toLowerCase();
+    if (selectedClientId) { const c = clients.find((x) => x.id === selectedClientId); if (!c || c.name.toLowerCase() !== q) selectClient(null, true); }
+    if (!q) { sugg.hidden = true; return; }
+    const hits = clients.filter((c) => (c.name || "").toLowerCase().includes(q) || (c.phone || "").replace(/\D/g, "").includes(q.replace(/\D/g, "") || "~")).slice(0, 8);
+    if (!hits.length) { sugg.hidden = true; return; }
+    sugg.innerHTML = hits.map((c) => `<li><button type="button" data-id="${esc(c.id)}">${esc(c.name)}<small>${esc(c.phone || c.email || "")}</small></button></li>`).join("");
+    sugg.hidden = false;
+  });
+  sugg.addEventListener("click", (e) => { const b = e.target.closest("button[data-id]"); if (!b) return; selectClient(b.dataset.id); sugg.hidden = true; });
+  document.addEventListener("click", (e) => { if (!e.target.closest(".suggest")) sugg.hidden = true; });
+  nameInput.addEventListener("keydown", (e) => { if (e.key === "Escape") sugg.hidden = true; if (e.key === "ArrowDown" && !sugg.hidden) { e.preventDefault(); const f = sugg.querySelector("button"); if (f) f.focus(); } });
+
+  function selectClient(id, keepFields) {
+    selectedClientId = id;
+    const c = clients.find((x) => x.id === id);
+    if (c) {
+      nameInput.value = c.name || ""; $("c_phone").value = c.phone || ""; $("c_email").value = c.email || "";
+      $("clientState").textContent = "Existing client · changes to phone or email update their record";
+      const last = jobsFor(id)[0];
+      if (last && !editingJobId) applySetup(last, false);
+    } else {
+      $("clientState").textContent = "New client";
+      if (!keepFields) { $("c_phone").value = ""; $("c_email").value = ""; }
+    }
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const box = $("hist");
+    if (!selectedClientId) { $("histSub").textContent = "Pick a client to see what they've had before."; box.innerHTML = `<div class="empty">No client selected</div>`; return; }
+    const list = jobsFor(selectedClientId);
+    const c = clients.find((x) => x.id === selectedClientId);
+    $("histSub").textContent = list.length ? `${c ? c.name : ""}: ${list.length} job${list.length > 1 ? "s" : ""}. The latest setup is filled in; pick another to use it.` : "No previous jobs for this client.";
+    box.innerHTML = list.map((j) => `
+      <div class="item">
+        <div class="top"><span>${esc(fmtDate(j.dateIn))}</span><span>${esc(j.config || "")}</span></div>
+        <div class="rq">${esc(racquetText(j))}${j.racquetTag ? ` <span class="conv">${esc(j.racquetTag)}</span>` : ""}</div>
+        <div class="st">${esc(stringText(j))}</div>
+        <div class="ten">${esc(tensionText(j))}</div>
+        ${j.notes ? `<div class="conv">${esc(j.notes)}</div>` : ""}
+        <div class="btns" style="margin-top:6px"><button class="btn small" type="button" data-use="${esc(j.id)}">Use this setup</button></div>
+      </div>`).join("") || `<div class="empty">First visit</div>`;
+  }
+  $("hist").addEventListener("click", (e) => { const b = e.target.closest("[data-use]"); if (!b) return; const j = jobs.find((x) => x.id === b.dataset.use); if (j) { applySetup(j, false); flash("Setup copied from " + fmtDate(j.dateIn)); } });
+
+  // ---------- form <-> job ----------
+  const F = {
+    racquetBrand: "r_brand", racquetModel: "r_model", racquetTag: "r_tag",
+    mainsString: "m_string", mainsGauge: "m_gauge", mainsTension: "m_tension", crossesString: "x_string", crossesGauge: "x_gauge", crossesTension: "x_tension",
+    stencil: "s_stencil", extras: "s_extras",
+  };
+  const JOBF = { dateIn: "j_in", dateDue: "j_due", status: "j_status", price: "j_price", notes: "j_notes" };
+  function setSel(el, v) { if (el.tagName === "SELECT" && v && ![...el.options].some((o) => o.value === v)) el.add(new Option(v, v)); el.value = v == null ? "" : v; }
+  function applySetup(j, includeJob) {
+    Object.entries(F).forEach(([k, id]) => setSel($(id), j[k] || ""));
+    setConfig(j.config || "Full bed"); setUnit(j.unit || "lbs");
+    if (includeJob) { Object.entries(JOBF).forEach(([k, id]) => setSel($(id), j[k] || "")); $("j_paid").value = j.paid ? "yes" : "no"; }
+    updateConv();
+  }
+  function readForm() {
+    const o = {};
+    Object.entries(F).forEach(([k, id]) => (o[k] = $(id).value.trim()));
+    Object.entries(JOBF).forEach(([k, id]) => (o[k] = $(id).value.trim()));
+    o.config = config; o.unit = unit; o.paid = $("j_paid").value === "yes";
+    if (config === "Full bed") { o.crossesString = o.mainsString; o.crossesGauge = o.mainsGauge; o.crossesTension = o.mainsTension; }
+    return o;
+  }
+  function resetForm() {
+    editingJobId = null; selectedClientId = null;
+    $("jobForm").reset();
+    $("j_in").value = today(0); $("j_due").value = today(2);
+    setConfig("Full bed"); setUnit("lbs");
+    $("clientState").textContent = "New client";
+    $("saveBtn").textContent = "Save job"; $("deleteJobBtn").hidden = true; $("ticketBtn").hidden = true; $("confirmDelJob").classList.remove("show");
+    renderHistory(); updateConv();
+  }
+  function flash(msg, err) { const m = $("saveMsg"); m.textContent = msg; m.classList.toggle("err", !!err); clearTimeout(flash.t); flash.t = setTimeout(() => (m.textContent = ""), 4000); }
+  $("clearBtn").addEventListener("click", resetForm);
+
+  function editJob(id) {
+    const j = jobs.find((x) => x.id === id); if (!j) return;
+    resetForm();
+    editingJobId = id;
+    selectedClientId = j.clientId;
+    const c = clients.find((x) => x.id === j.clientId);
+    nameInput.value = (c && c.name) || j.clientName || ""; $("c_phone").value = (c && c.phone) || ""; $("c_email").value = (c && c.email) || "";
+    $("clientState").textContent = "Editing a saved job";
+    applySetup(j, true);
+    $("saveBtn").textContent = "Save changes"; $("deleteJobBtn").hidden = !isOwner; $("ticketBtn").hidden = false;
+    renderHistory();
+    location.hash = "#intake";
+    window.scrollTo(0, 0);
+  }
+
+  $("jobForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!db) { flash("Saving is not available in this view.", true); return; }
+    const name = nameInput.value.trim();
+    if (!name) { flash("Enter the client's name.", true); nameInput.focus(); return; }
+    const data = readForm();
+    if (!data.mainsTension) { flash("Enter a tension.", true); $("m_tension").focus(); return; }
+    const btn = $("saveBtn"); btn.disabled = true;
+    try {
+      // client record
+      let cid = selectedClientId;
+      if (!cid) {
+        const existing = clients.find((c) => (c.name || "").trim().toLowerCase() === name.toLowerCase());
+        cid = existing ? existing.id : null;
+      }
+      const cBody = { name, phone: $("c_phone").value.trim(), email: $("c_email").value.trim() };
+      if (!cid) {
+        const ref = db.collection("clients").doc();
+        await ref.set({ ...cBody, notes: "", createdAt: Date.now() });
+        cid = ref.id;
+      } else {
+        const c = clients.find((x) => x.id === cid);
+        if (!c || c.name !== cBody.name || (c.phone || "") !== cBody.phone || (c.email || "") !== cBody.email) await db.doc("clients/" + cid).update(cBody);
+      }
+      const body = { ...data, clientId: cid, clientName: name, updatedAt: Date.now() };
+      if (editingJobId) {
+        const prev = jobs.find((x) => x.id === editingJobId) || {};
+        await db.doc("jobs/" + editingJobId).set({ ...body, createdAt: prev.createdAt || Date.now(), pickedUpAt: data.status === "Picked up" ? (prev.pickedUpAt || Date.now()) : null });
+        flash("Changes saved.");
+      } else {
+        const ref = db.collection("jobs").doc();
+        const full = { ...body, createdAt: Date.now(), pickedUpAt: data.status === "Picked up" ? Date.now() : null };
+        await ref.set(full);
+        flash(`Saved: ${name}, ${tensionText(data)}`);
+        const keep = flash.t; resetForm(); flash.t = keep;
+        openTicket({ id: ref.id, ...full }, cBody);
+        return;
+      }
+      const keep = flash.t; resetForm(); flash.t = keep;
+    } catch (err) {
+      handleWriteError(err);
+    } finally { btn.disabled = false; }
+  });
+  function handleWriteError(err) {
+    if (err && err.code === "unauthenticated") flash("Enter the PIN, then save again. Your form is still filled in.", true);
+    else flash((err && err.message) || "Couldn't save. Try again.", true);
+  }
+
+  $("deleteJobBtn").addEventListener("click", () => $("confirmDelJob").classList.add("show"));
+  $("noDelJob").addEventListener("click", () => $("confirmDelJob").classList.remove("show"));
+  $("yesDelJob").addEventListener("click", async () => {
+    if (!editingJobId || !db) return;
+    try { await db.doc("jobs/" + editingJobId).delete(); resetForm(); flash("Job deleted."); } catch (err) { handleWriteError(err); }
+  });
+
+  // ---------- queue ----------
+  const STATUSES = ["Received", "Strung", "Picked up"];
+  function renderQueue() {
+    const q = $("queueSearch").value.trim().toLowerCase();
+    const showPicked = $("showPicked").checked;
+    const cutoff = Date.now() - 30 * 864e5;
+    const t = today(0);
+    const match = (j) => !q || [j.clientName, racquetText(j), stringText(j), j.racquetTag].join(" ").toLowerCase().includes(q);
+    const open = jobs.filter((j) => j.status !== "Picked up").length;
+    $("queueCount").textContent = open ? String(open) : "";
+    $("queueCols").innerHTML = STATUSES.map((s) => {
+      let list = jobs.filter((j) => (j.status || "Received") === s && match(j));
+      if (s === "Picked up") list = showPicked ? list.filter((j) => (j.pickedUpAt || j.updatedAt || 0) >= cutoff) : [];
+      list.sort((a, b) => (a.dateDue || "9").localeCompare(b.dateDue || "9"));
+      const next = STATUSES[STATUSES.indexOf(s) + 1];
+      const body = s === "Picked up" && !showPicked
+        ? `<div class="empty">Tick “Show picked-up jobs” to see recent pickups</div>`
+        : list.map((j) => {
+          const overdue = s !== "Picked up" && j.dateDue && j.dateDue < t;
+          const dueToday = s !== "Picked up" && j.dateDue === t;
+          return `<div class="job${overdue ? " overdue" : ""}">
+            <div class="who"><span>${esc(j.clientName)}</span>${overdue ? `<span class="chip bad">Overdue</span>` : dueToday ? `<span class="chip warn">Due today</span>` : j.dateDue ? `<span class="conv">Due ${esc(fmtDate(j.dateDue))}</span>` : ""}</div>
+            <div class="meta">${esc(racquetText(j))}${j.racquetTag ? " · " + esc(j.racquetTag) : ""}</div>
+            <div class="meta">${esc(stringText(j))} · <span class="ten">${esc(tensionText(j))}</span></div>
+            <div class="meta">${j.paid ? `<span class="chip ok">Paid</span>` : `<span class="chip warn">Unpaid${j.price ? " $" + esc(j.price) : ""}</span>`}${j.notes ? " · " + esc(j.notes) : ""}</div>
+            <div class="btns">
+              ${next && canWrite ? `<button class="btn small primary" type="button" data-advance="${esc(j.id)}" data-to="${esc(next)}">Mark ${esc(next.toLowerCase())}</button>` : ""}
+              ${!j.paid && canWrite ? `<button class="btn small" type="button" data-paid="${esc(j.id)}">Mark paid</button>` : ""}
+              <button class="btn small" type="button" data-edit="${esc(j.id)}">Open</button>
+              <button class="btn small" type="button" data-ticket="${esc(j.id)}">Tag</button>
+            </div></div>`;
+        }).join("") || `<div class="empty">Nothing here</div>`;
+      return `<div class="col"><h2>${esc(s)}<span class="mono">${s === "Picked up" && !showPicked ? "" : list.length}</span></h2>${body}</div>`;
+    }).join("");
+  }
+  $("queueSearch").addEventListener("input", renderQueue);
+  $("showPicked").addEventListener("change", renderQueue);
+  $("queueCols").addEventListener("click", async (e) => {
+    const adv = e.target.closest("[data-advance]"), paid = e.target.closest("[data-paid]"), ed = e.target.closest("[data-edit]");
+    if (ed) return editJob(ed.dataset.edit);
+    const tk = e.target.closest("[data-ticket]");
+    if (tk) return openTicketById(tk.dataset.ticket);
+    if (!db) return;
+    try {
+      if (adv) { adv.disabled = true; const to = adv.dataset.to; await db.doc("jobs/" + adv.dataset.advance).update({ status: to, updatedAt: Date.now(), pickedUpAt: to === "Picked up" ? Date.now() : null }); }
+      if (paid) { paid.disabled = true; await db.doc("jobs/" + paid.dataset.paid).update({ paid: true, updatedAt: Date.now() }); }
+    } catch (err) { notice("Couldn't update that job. " + ((err && err.message) || "Try again.")); }
+  });
+
+  // ---------- clients ----------
+  function renderClients() {
+    $("clientCount").textContent = clients.length ? String(clients.length) : "";
+    const q = $("clientSearch").value.trim().toLowerCase();
+    const words = q.split(/\s+/).filter(Boolean);
+    const digits = q.replace(/\D/g, "");
+    const rows = clients
+      .map((c) => ({ c, js: jobsFor(c.id) }))
+      .filter(({ c, js }) => {
+        if (!words.length) return true;
+        const hay = [c.name, c.phone, c.email, c.notes].concat(js.map((j) => [racquetText(j), j.racquetTag, j.mainsString, j.crossesString, j.stencil, j.extras, j.notes, j.mainsTension, j.crossesTension].join(" "))).join(" ").toLowerCase();
+        if (digits.length >= 4 && (c.phone || "").replace(/\D/g, "").includes(digits)) return true;
+        return words.every((w) => hay.includes(w));
+      })
+      .sort((a, b) => ((b.js[0] && b.js[0].dateIn) || "").localeCompare((a.js[0] && a.js[0].dateIn) || "") || (a.c.name || "").localeCompare(b.c.name || ""));
+    $("clientMatch").textContent = words.length ? `${rows.length} of ${clients.length} clients` : "";
+    $("clientRows").innerHTML = rows.map(({ c, js }) => `
+      <tr class="click" data-client="${esc(c.id)}" tabindex="0">
+        <td><strong>${esc(c.name)}</strong></td><td class="num">${esc(c.phone || "")}</td><td class="num">${js.length}</td>
+        <td>${js[0] ? esc(stringText(js[0])) + ` <span class="mono">${esc(tensionText(js[0]))}</span>` : ""}</td>
+        <td class="num">${js[0] ? esc(fmtDate(js[0].dateIn)) : ""}</td></tr>`).join("")
+      || `<tr><td colspan="5"><div class="empty">${clients.length ? "No clients match that search" : "No clients yet. Saving a job adds the client here."}</div></td></tr>`;
+    if (openClientId) renderClientDetail();
+  }
+  $("clientSearch").addEventListener("input", renderClients);
+  function openClient(id) { openClientId = id; $("clientList").hidden = true; $("clientDetail").hidden = false; renderClientDetail(); window.scrollTo(0, 0); }
+  $("clientRows").addEventListener("click", (e) => { const r = e.target.closest("[data-client]"); if (r) openClient(r.dataset.client); });
+  $("clientRows").addEventListener("keydown", (e) => { const r = e.target.closest("[data-client]"); if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openClient(r.dataset.client); } });
+
+  function renderClientDetail() {
+    const c = clients.find((x) => x.id === openClientId);
+    const box = $("clientDetail");
+    if (!c) { openClientId = null; box.hidden = true; $("clientList").hidden = false; return; }
+    const js = jobsFor(c.id);
+    const active = document.activeElement && document.activeElement.id === "cd_notes";
+    if (active) return; // don't clobber typing
+    box.innerHTML = `
+      <div class="btns" style="margin-bottom:12px"><button class="btn small" type="button" id="cd_back">← All clients</button></div>
+      <div class="card">
+        <div class="client-head">
+          <div><h2>${esc(c.name)}</h2><div class="contact">${[c.phone, c.email].filter(Boolean).map(esc).join(" · ") || "No contact details"}</div></div>
+          <div class="btns">
+            ${canWrite ? `<button class="btn primary" type="button" id="cd_new">New job for ${esc(c.name.split(" ")[0])}</button>` : ""}
+            ${isOwner ? `<button class="btn danger small" type="button" id="cd_del">Delete client</button>` : ""}
+            <span class="confirm" id="cd_confirm">Delete ${esc(c.name)} and their ${js.length} job${js.length === 1 ? "" : "s"}? <button class="btn small danger" type="button" id="cd_yes">Delete</button><button class="btn small" type="button" id="cd_no">Keep</button></span>
+          </div>
+        </div>
+        <label>Preferences and notes<textarea id="cd_notes" placeholder="Likes a softer feel, has tennis elbow, always strings 2 lbs looser in winter…" ${canWrite ? "" : "readonly"}>${esc(c.notes || "")}</textarea></label>
+        <span class="status-msg" id="cd_msg" role="status"></span>
+        <h3 style="margin:18px 0 6px;font-size:18px;text-transform:uppercase">Stringing history</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Date in</th><th>Racquet</th><th>Setup</th><th>Strings</th><th>Tension</th><th>Status</th></tr></thead>
+          <tbody>${js.map((j) => `<tr class="click" data-edit="${esc(j.id)}" tabindex="0"><td class="num">${esc(fmtDate(j.dateIn))}</td><td>${esc(racquetText(j))}${j.racquetTag ? `<div class="conv">${esc(j.racquetTag)}</div>` : ""}</td><td>${esc(j.config || "")}</td><td>${esc(stringText(j))}</td><td class="num">${esc(tensionText(j))}</td><td>${esc(j.status || "")}</td></tr>`).join("") || `<tr><td colspan="6"><div class="empty">No jobs yet</div></td></tr>`}</tbody>
+        </table></div>
+      </div>`;
+    $("cd_back").onclick = () => { openClientId = null; box.hidden = true; $("clientList").hidden = false; };
+    const nb = $("cd_new"); if (nb) nb.onclick = () => { resetForm(); location.hash = "#intake"; selectClient(c.id); };
+    const del = $("cd_del"); if (del) del.onclick = () => $("cd_confirm").classList.add("show");
+    $("cd_no").onclick = () => $("cd_confirm").classList.remove("show");
+    $("cd_yes").onclick = async () => {
+      try { for (const j of js) await db.doc("jobs/" + j.id).delete(); await db.doc("clients/" + c.id).delete(); openClientId = null; box.hidden = true; $("clientList").hidden = false; }
+      catch (err) { $("cd_msg").textContent = (err && err.message) || "Couldn't delete. Try again."; }
+    };
+    const notes = $("cd_notes"); let tmr;
+    notes.oninput = () => { clearTimeout(tmr); tmr = setTimeout(async () => { try { await db.doc("clients/" + c.id).update({ notes: notes.value }); $("cd_msg").textContent = "Notes saved"; } catch (e) { $("cd_msg").textContent = "Couldn't save notes"; } }, 800); };
+    notes.onblur = () => setTimeout(renderClientDetail, 900);
+    box.querySelectorAll("tr[data-edit]").forEach((tr) => { tr.onclick = () => editJob(tr.dataset.edit); tr.onkeydown = (e) => { if (e.key === "Enter") editJob(tr.dataset.edit); }; });
+  }
+
+  // Import (owner only)
+  $("importFile").addEventListener("change", async (e) => {
+    const f = e.target.files && e.target.files[0]; e.target.value = "";
+    const m = $("csvMsg"); m.classList.remove("err");
+    if (!f) return;
+    try {
+      const body = JSON.parse(await f.text());
+      const r = await api("POST", "/api/import", body);
+      m.textContent = `Imported ${r.imported} records.`;
+      await refresh();
+    } catch (err) { m.textContent = err && err.message ? err.message : "That file couldn't be imported."; m.classList.add("err"); }
+  });
+
+  // ---------- printable tag ----------
+  let ticketJob = null, ticketClient = null;
+  function jobNo(id) { return String(id || "").replace(/[^a-z0-9]/gi, "").slice(-5).toUpperCase(); }
+  function ticketHTML(j, c, autoPrint) {
+    const e = esc, u = j.unit || "lbs";
+    const hybrid = j.config === "Hybrid";
+    const ten = hybrid ? `${e(j.mainsTension || "?")}<small>/</small>${e(j.crossesTension || "?")}` : e(j.mainsTension || "?");
+    const line = (label, s, g, t) => `<tr><th>${label}</th><td>${e(s || "—")}${g ? ` <span class="g">${e(g.split(" ")[0])}</span>` : ""}</td><td class="t">${e(t || "")}</td></tr>`;
+    const phone = (c && c.phone) || "";
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Tag ${e(jobNo(j.id))} ${e(j.clientName)}</title><style>
+@page { size: letter; margin: 0.4in; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 12px; font: 11px/1.3 "Helvetica Neue", Arial, sans-serif; color: #000; background: #fff; }
+.tag { width: 2.5in; border: 1px dashed #999; padding: 0.14in 0.16in 0.1in; position: relative; }
+.hole { width: 0.24in; height: 0.24in; border: 1.5px solid #000; border-radius: 50%; margin: 0 auto 6px; }
+.hdr { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #000; padding-bottom: 3px; margin-bottom: 6px; font-weight: 700; letter-spacing: .06em; font-size: 9px; text-transform: uppercase; }
+.hdr b { font: 700 13px/1 "Courier New", monospace; letter-spacing: 0; }
+.name { font-size: 17px; font-weight: 700; line-height: 1.1; }
+.phone { font-family: "Courier New", monospace; font-size: 12px; margin-bottom: 6px; }
+.rq { font-weight: 600; font-size: 12px; }
+.rq span { font-weight: 400; }
+.ten { text-align: center; border: 2px solid #000; border-radius: 4px; margin: 8px 0 6px; padding: 4px 0 2px; }
+.ten .v { font: 700 30px/1 "Arial Narrow", Arial, sans-serif; letter-spacing: .01em; }
+.ten .v small { font-size: 20px; margin: 0 2px; }
+.ten .u { font-size: 9px; text-transform: uppercase; letter-spacing: .1em; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+th { text-align: left; font-size: 8px; text-transform: uppercase; letter-spacing: .06em; width: 0.55in; vertical-align: top; padding: 2px 0; }
+td { padding: 2px 0; vertical-align: top; }
+td.t { text-align: right; font-family: "Courier New", monospace; font-weight: 700; white-space: nowrap; padding-left: 4px; }
+.g { font-family: "Courier New", monospace; font-size: 10px; }
+.kv { display: flex; justify-content: space-between; gap: 6px; border-top: 1px solid #000; padding-top: 4px; margin-top: 4px; font-size: 10px; }
+.kv b { font-family: "Courier New", monospace; }
+.notes { font-size: 10px; margin-top: 4px; font-style: italic; }
+.cut { border-top: 1px dashed #000; margin: 10px -0.16in 6px; position: relative; text-align: center; }
+.cut span { position: relative; top: -7px; background: #fff; padding: 0 4px; font-size: 8px; letter-spacing: .1em; text-transform: uppercase; }
+.stub .name { font-size: 13px; }
+.stub .row { display: flex; justify-content: space-between; font-size: 10px; }
+.stub .no { font: 700 18px/1 "Courier New", monospace; }
+</style></head><body>
+<div class="tag">
+  <div class="hole"></div>
+  <div class="hdr"><span>Stringing tag</span><b>#${e(jobNo(j.id))}</b></div>
+  <div class="name">${e(j.clientName)}</div>
+  ${phone ? `<div class="phone">${e(phone)}</div>` : ""}
+  <div class="rq">${e(racquetText(j))}${j.racquetTag ? ` <span>· ${e(j.racquetTag)}</span>` : ""}</div>
+  <div class="ten"><div class="v">${ten}</div><div class="u">${e(u)} · ${e(j.config || "Full bed")}</div></div>
+  <table>
+    ${hybrid ? line("Mains", j.mainsString, j.mainsGauge, j.mainsTension) + line("Crosses", j.crossesString, j.crossesGauge, j.crossesTension) : line("String", j.mainsString, j.mainsGauge, "")}
+    ${j.stencil ? `<tr><th>Stencil</th><td colspan="2">${e(j.stencil)}</td></tr>` : ""}
+    ${j.extras ? `<tr><th>Extras</th><td colspan="2">${e(j.extras)}</td></tr>` : ""}
+  </table>
+  <div class="kv"><span>In <b>${e(fmtDate(j.dateIn))}</b></span><span>Due <b>${e(fmtDate(j.dateDue))}</b></span></div>
+  <div class="kv"><span>${j.price ? `$<b>${e(j.price)}</b>` : "Price —"}</span><span><b>${j.paid ? "PAID" : "UNPAID"}</b></span></div>
+  ${j.notes ? `<div class="notes">${e(j.notes)}</div>` : ""}
+  <div class="cut"><span>✂ claim stub</span></div>
+  <div class="stub">
+    <div class="row"><span class="no">#${e(jobNo(j.id))}</span><span>Due <b>${e(fmtDate(j.dateDue))}</b></span></div>
+    <div class="name">${e(j.clientName)}</div>
+    <div class="row"><span>${e(racquetText(j))}</span><span>${j.price ? "$" + e(j.price) : ""}${j.paid ? " paid" : ""}</span></div>
+  </div>
+</div>
+${autoPrint ? `<script>window.addEventListener("load",function(){setTimeout(function(){window.print()},200)});<\/script>` : ""}
+</body></html>`;
+  }
+  function openTicket(j, c) {
+    ticketJob = j; ticketClient = c || clients.find((x) => x.id === j.clientId) || null;
+    $("ticketFrame").srcdoc = ticketHTML(j, ticketClient, false);
+    $("ticketHint").textContent = "Cut along the dashed line, punch the hole, and give the client the stub.";
+    $("ticketMsg").textContent = "";
+    $("ticketOverlay").classList.add("show");
+    $("ticketPrint").focus();
+  }
+  function openTicketById(id) { const j = jobs.find((x) => x.id === id); if (j) openTicket(j); }
+  function closeTicket() { $("ticketOverlay").classList.remove("show"); }
+  $("ticketClose").addEventListener("click", closeTicket);
+  $("ticketOverlay").addEventListener("click", (e) => { if (e.target.id === "ticketOverlay") closeTicket(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("ticketOverlay").classList.contains("show")) closeTicket(); });
+  $("ticketBtn").addEventListener("click", () => { if (editingJobId) openTicketById(editingJobId); });
+  $("ticketPrint").addEventListener("click", async () => {
+    if (!ticketJob) return;
+    const msg = $("ticketMsg"); msg.classList.remove("err"); msg.textContent = "";
+    try { $("ticketFrame").contentWindow.focus(); $("ticketFrame").contentWindow.print(); }
+    catch (e) { msg.textContent = "Your browser blocked printing."; msg.classList.add("err"); }
+  });
+
+  function renderAll() { refreshStringList(); renderQueue(); renderClients(); renderHistory(); }
+
+  // ---------- server data layer ----------
+  async function api(method, url, body) {
+    let res;
+    try {
+      res = await fetch(url, { method, credentials: "same-origin", headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
+    } catch (e) { const err = new Error("Can't reach the server. Check your connection."); err.code = "unavailable"; throw err; }
+    let out = {};
+    try { out = await res.json(); } catch (e) { /* empty */ }
+    if (res.status === 401 && !url.endsWith("/login")) { showLogin(); }
+    if (!res.ok) { const err = new Error(out.error || "Something went wrong."); err.code = res.status === 403 ? "forbidden" : res.status === 401 ? "unauthenticated" : "unavailable"; throw err; }
+    return out;
+  }
+  function newId() { const a = new Uint8Array(15); crypto.getRandomValues(a); return Array.from(a, (b) => "abcdefghijklmnopqrstuvwxyz0123456789"[b % 36]).join("").slice(0, 20); }
+  function applyLocal(table, id, data, mode) {
+    const list = table === "clients" ? clients : jobs;
+    const i = list.findIndex((x) => x.id === id);
+    if (mode === "delete") { if (i >= 0) list.splice(i, 1); }
+    else if (mode === "update" && i >= 0) list[i] = { ...list[i], ...data };
+    else if (i >= 0) list[i] = { id, ...data }; else list.push({ id, ...data });
+    renderAll();
+  }
+  function docRef(table, id) {
+    const url = `/api/${table}/${encodeURIComponent(id)}`;
+    return {
+      id,
+      set: async (data) => { await api("PUT", url, { data }); applyLocal(table, id, data, "set"); },
+      update: async (data) => { await api("PATCH", url, { data }); applyLocal(table, id, data, "update"); },
+      delete: async () => { await api("DELETE", url); applyLocal(table, id, null, "delete"); },
+    };
+  }
+  db = {
+    collection: (table) => ({ doc: (id) => docRef(table, id || newId()) }),
+    doc: (p) => { const [t, i] = p.split("/"); return docRef(t, i); },
+  };
+
+  let loaded = false;
+  async function refresh() {
+    const d = await api("GET", "/api/data");
+    clients = d.clients || []; jobs = d.jobs || [];
+    setRole(d.role);
+    if (!loaded) { loaded = true; notice(""); }
+    renderAll();
+  }
+  function setRole(role) {
+    isOwner = role === "owner";
+    $("roleLbl").textContent = isOwner ? "Owner" : "Staff";
+    $("importLbl").hidden = !isOwner;
+    if (editingJobId) $("deleteJobBtn").hidden = !isOwner;
+  }
+
+  // login screen
+  function showLogin(msg) {
+    $("loginOverlay").classList.add("show");
+    $("loginMsg").textContent = msg || "";
+    setTimeout(() => $("pin").focus(), 0);
+  }
+  $("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = $("loginBtn"); btn.disabled = true; $("loginMsg").textContent = "";
+    try {
+      const r = await api("POST", "/api/login", { pin: $("pin").value });
+      $("pin").value = "";
+      $("loginOverlay").classList.remove("show");
+      setRole(r.role);
+      await refresh();
+    } catch (err) { $("loginMsg").textContent = err.message; $("pin").select(); }
+    finally { btn.disabled = false; }
+  });
+  $("lockBtn").addEventListener("click", async () => {
+    try { await api("POST", "/api/logout"); } catch (e) { /* ignore */ }
+    clients = []; jobs = []; isOwner = false; loaded = false; resetForm(); renderAll();
+    showLogin("Locked. Enter a PIN to continue.");
+  });
+
+  // ---------- start ----------
+  resetForm();
+  renderAll();
+  refresh().catch((err) => { if (err.code !== "unauthenticated") notice(err.message); });
+  setInterval(() => { if (loaded && document.visibilityState === "visible" && !$("loginOverlay").classList.contains("show")) refresh().catch(() => {}); }, 15000);
+  document.addEventListener("visibilitychange", () => { if (loaded && document.visibilityState === "visible") refresh().catch(() => {}); });
+
+})();
+</script>
+</body>
+</html>
